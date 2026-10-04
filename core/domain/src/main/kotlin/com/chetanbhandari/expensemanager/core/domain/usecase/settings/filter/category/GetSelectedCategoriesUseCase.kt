@@ -1,0 +1,33 @@
+package com.chetanbhandari.expensemanager.core.domain.usecase.settings.filter.category
+
+import com.chetanbhandari.expensemanager.core.domain.usecase.category.FindCategoryByIdUseCase
+import com.chetanbhandari.expensemanager.core.model.Category
+import com.chetanbhandari.expensemanager.core.model.Resource
+import com.chetanbhandari.expensemanager.core.repository.SettingsRepository
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
+
+class GetSelectedCategoriesUseCase(
+    private val settingsRepository: SettingsRepository,
+    private val findCategoryByIdUseCase: FindCategoryByIdUseCase,
+) {
+
+    operator fun invoke(): Flow<List<Category>> {
+        return settingsRepository.getCategories().map { categoryIds ->
+            return@map buildList<Category> {
+                if (categoryIds?.isNotEmpty() == true) {
+                    repeat(categoryIds.size) {
+                        val categoryId = categoryIds[it]
+                        when (val response = findCategoryByIdUseCase.invoke(categoryId)) {
+                            is Resource.Error -> Unit
+
+                            is Resource.Success -> {
+                                add(response.data)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

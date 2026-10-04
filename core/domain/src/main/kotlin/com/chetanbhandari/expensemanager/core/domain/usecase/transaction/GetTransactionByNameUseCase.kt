@@ -1,0 +1,36 @@
+package com.chetanbhandari.expensemanager.core.domain.usecase.transaction
+
+import com.chetanbhandari.expensemanager.core.model.Transaction
+import com.chetanbhandari.expensemanager.core.repository.TransactionRepository
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
+
+class GetTransactionByNameUseCase(
+    private val repository: TransactionRepository,
+) {
+    fun invoke(searchText: String?): Flow<List<Transaction>> = repository.getAllTransaction().map { values ->
+        val filteredList = mutableListOf<Transaction>()
+
+        if (searchText?.isNotBlank() == true && values?.isNotEmpty() == true) {
+            filteredList.addAll(
+                values.filter {
+                    val noteContainSearchText = it.notes.contains(
+                        searchText,
+                        ignoreCase = true,
+                    )
+
+                    val categoryNameContainSearchText = it.category.name.contains(
+                        searchText,
+                        ignoreCase = true,
+                    )
+
+                    noteContainSearchText || categoryNameContainSearchText
+                },
+            )
+        } else {
+            filteredList.addAll(values?.toList() ?: emptyList())
+        }
+
+        filteredList
+    }
+}

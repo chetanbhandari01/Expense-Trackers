@@ -1,0 +1,41 @@
+package com.chetanbhandari.expensemanager.feature.transaction.di
+
+import com.chetanbhandari.expensemanager.feature.transaction.create.TransactionCreateViewModel
+import com.chetanbhandari.expensemanager.feature.transaction.list.TransactionListViewModel
+import com.chetanbhandari.expensemanager.feature.transaction.numberpad.NumberPadViewModel
+import org.koin.core.module.dsl.viewModel
+import org.koin.dsl.module
+
+val TransactionViewModelModule = module {
+    viewModel {
+        TransactionCreateViewModel(
+            savedStateHandle = get(),
+            getCurrencyUseCase = get(),
+            getAllAccountsUseCase = get(),
+            getAllCategoryUseCase = get(),
+            getDefaultCurrencyUseCase = get(),
+            getFormattedAmountUseCase = get(),
+            findTransactionByIdUseCase = get(),
+            addTransactionUseCase = get(),
+            updateTransactionUseCase = get(),
+            deleteTransactionUseCase = get(),
+            settingsRepository = get(),
+            imageStorageRepository = get(),
+            appComposeNavigator = get(),
+            numberFormatRepository = get(),
+            feedbackRepository = get(),
+            analyticsRepository = get(),
+            budgetAlertTrigger = get(),
+        )
+    }
+    viewModel {
+        TransactionListViewModel(
+            getCurrencyUseCase = get(),
+            getFormattedAmountUseCase = get(),
+            getTransactionWithFilterUseCase = get(),
+            appCoroutineDispatchers = get(),
+            appComposeNavigator = get(),
+        )
+    }
+    viewModel { NumberPadViewModel() }
+}

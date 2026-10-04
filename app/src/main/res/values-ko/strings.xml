@@ -1,0 +1,59 @@
+<resources>
+
+    <string name="app_name">Expense Manager</string>
+
+
+    <!-- Failure message strings -->
+
+    <string name="select">선택</string>
+
+    <string name="title_home">홈</string>
+    <string name="view_all">전체 보기</string>
+    <string name="accounts">계좌</string>
+
+    <string name="category_name">카테고리 이름</string>
+
+
+    <string name="title_graph">그래프</string>
+
+
+    <string name="currency">통화</string>
+
+    <string name="choose_color">색상 선택</string>
+    <string name="choose_icon">아이콘 선택</string>
+
+
+    <string name="categories">카테고리</string>
+    <string name="total">합계</string>
+    <string name="transaction_summary">요약</string>
+    <string name="clear_all">모두 지우기</string>
+    <string name="category_selection_message">계속하려면 카테고리를 하나 이상 선택해야 합니다</string>
+    <string name="share">공유</string>
+    <string name="hello">안녕하세요!</string>
+    <string name="guest">게스트</string>
+    <string name="balance">잔액</string>
+
+    <string name="add_transaction">거래 추가</string>
+    <string name="cancel">취소</string>
+    <string name="ok">확인</string>
+    <string name="settings">설정</string>
+    <string name="analysis">분석</string>
+    <string name="transaction">거래</string>
+
+    <string name="app_lock_title">Expense Manager 잠금 해제</string>
+    <string name="app_lock_description">계속하려면 본인 확인을 해주세요</string>
+    <string name="app_lock_unlock">잠금 해제</string>
+
+    <string name="reminder_primer_title">지출을 놓치지 마세요</string>
+    <string name="reminder_primer_description">하루 한 번 지출을 기록하도록 알려 드려요. 몇 초면 충분하고 예산을 정확하게 유지할 수 있어요.</string>
+    <string name="reminder_primer_turn_on">매일 알림 켜기</string>
+    <string name="reminder_primer_not_now">나중에</string>
+    <string name="reminder_primer_footnote">설정에서 언제든지 시간을 변경하거나 알림을 끌 수 있어요.</string>
+    <string name="first_save_title">첫 지출을 저장했어요!</string>
+    <string name="first_save_description">좋은 시작이에요. 7일 동안 지출을 기록하면 돈이 어디에 쓰이는지 정확히 알 수 있어요.</string>
+    <string name="first_save_progress">%2$d일 중 %1$d일째</string>
+    <string name="first_save_add_another">하나 더 추가</string>
+    <string name="first_save_done">완료</string>
+    <string name="shortcut_add_expense_short">지출 추가</string>
+    <string name="shortcut_add_expense_long">새 지출 추가</string>
+</resources>

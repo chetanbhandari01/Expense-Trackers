@@ -1,0 +1,60 @@
+package com.chetanbhandari.expensemanager.feature.analysis
+
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.Scaffold
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
+import com.chetanbhandari.expensemanager.core.designsystem.theme.ExpenseManagerPreviewTheme
+import com.chetanbhandari.expensemanager.core.designsystem.ui.components.ExpenseManagerTopAppBar
+import com.chetanbhandari.expensemanager.feature.filter.FilterView
+
+@Composable
+fun AnalysisScreen() {
+    AnalysisScreenScaffoldView()
+}
+
+@Composable
+private fun AnalysisScreenScaffoldView() {
+    Scaffold(
+        topBar = {
+            ExpenseManagerTopAppBar(
+                title = stringResource(R.string.analysis),
+            )
+        },
+    ) { innerPadding ->
+        AnalysisScreenContent(
+            modifier = Modifier
+                .padding(top = innerPadding.calculateTopPadding())
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState()),
+        )
+    }
+}
+
+@Composable
+private fun AnalysisScreenContent(modifier: Modifier = Modifier) {
+    Column(modifier = modifier) {
+        FilterView(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(end = 6.dp),
+        )
+        AnalysisGraphScreen()
+    }
+}
+
+@Preview
+@Composable
+fun AnalysisScreenPreview() {
+    ExpenseManagerPreviewTheme(padding = 0.dp) {
+        AnalysisScreen()
+    }
+}

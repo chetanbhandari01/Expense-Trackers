@@ -1,0 +1,20 @@
+plugins {
+    id("naveenapps.plugin.android.feature")
+    id("naveenapps.plugin.kotlin.basic")
+    id("naveenapps.plugin.compose")
+    id("naveenapps.plugin.di")
+}
+
+android {
+    namespace = "com.chetanbhandari.expensemanager.feature.dashboard"
+}
+
+dependencies {
+    implementation(project(":feature:account"))
+    implementation(project(":feature:budget"))
+    implementation(project(":feature:category"))
+    implementation(project(":feature:filter"))
+    implementation(project(":feature:transaction"))
+    // Streak card flame icon (R8 strips the unused icons from release builds).
+    implementation(libs.androidx.compose.material.iconsExtended)
+}

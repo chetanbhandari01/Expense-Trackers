@@ -1,0 +1,27 @@
+package com.chetanbhandari.expensemanager.feature.settings.di
+
+import com.chetanbhandari.expensemanager.feature.settings.SettingsViewModel
+import com.chetanbhandari.expensemanager.feature.settings.advanced.AdvancedSettingsViewModel
+import org.koin.core.module.dsl.viewModel
+import org.koin.dsl.module
+
+val SettingsViewModelModule = module {
+    viewModel {
+        SettingsViewModel(
+            getDefaultCurrencyUseCase = get(),
+            getCurrencyUseCase = get(),
+            getCurrentThemeUseCase = get(),
+            getCurrentLocaleUseCase = get(),
+            getAllAccountsUseCase = get(),
+            getAllCategoryUseCase = get(),
+            settingsRepository = get(),
+            appComposeNavigator = get(),
+            analyticsRepository = get(),
+        )
+    }
+    viewModel {
+        AdvancedSettingsViewModel(
+            appComposeNavigator = get(),
+        )
+    }
+}

@@ -1,0 +1,25 @@
+package com.chetanbhandari.expensemanager.core.domain.usecase.settings.filter.daterange
+
+import com.chetanbhandari.expensemanager.core.model.DateRangeType
+import com.chetanbhandari.expensemanager.core.model.Resource
+import com.chetanbhandari.expensemanager.core.repository.DateRangeFilterRepository
+import java.util.Date
+
+class SaveDateRangeUseCase(
+    private val dateRangeFilterRepository: DateRangeFilterRepository,
+    private val setDateRangesUseCase: SetDateRangesUseCase,
+) {
+
+    suspend operator fun invoke(
+        dateRangeType: DateRangeType,
+        customRanges: List<Date>,
+    ): Resource<Boolean> = when (val response = setDateRangesUseCase.invoke(customRanges)) {
+        is Resource.Error -> {
+            response
+        }
+
+        is Resource.Success -> {
+            dateRangeFilterRepository.setDateRangeFilterType(dateRangeType)
+        }
+    }
+}

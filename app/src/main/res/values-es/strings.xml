@@ -1,0 +1,59 @@
+<resources>
+
+    <string name="app_name">Expense Manager</string>
+
+
+    <!-- Failure message strings -->
+
+    <string name="select">Seleccionar</string>
+
+    <string name="title_home">Inicio</string>
+    <string name="view_all">Ver todo</string>
+    <string name="accounts">Cuenta</string>
+
+    <string name="category_name">Nombre de la categoría</string>
+
+
+    <string name="title_graph">Gráfico</string>
+
+
+    <string name="currency">Moneda</string>
+
+    <string name="choose_color">Elegir color</string>
+    <string name="choose_icon">Elegir ícono</string>
+
+
+    <string name="categories">Categorías</string>
+    <string name="total">Total</string>
+    <string name="transaction_summary">Resumen</string>
+    <string name="clear_all">Borrar todo</string>
+    <string name="category_selection_message">Debes seleccionar al menos una categoría para continuar</string>
+    <string name="share">Compartir</string>
+    <string name="hello">¡Hola!</string>
+    <string name="guest">Invitado</string>
+    <string name="balance">Saldo</string>
+
+    <string name="add_transaction">Agregar transacción</string>
+    <string name="cancel">Cancelar</string>
+    <string name="ok">Aceptar</string>
+    <string name="settings">Ajustes</string>
+    <string name="analysis">Análisis</string>
+    <string name="transaction">Transacción</string>
+
+    <string name="app_lock_title">Desbloquear Expense Manager</string>
+    <string name="app_lock_description">Verifica tu identidad para continuar</string>
+    <string name="app_lock_unlock">Desbloquear</string>
+
+    <string name="reminder_primer_title">No olvides ningún gasto</string>
+    <string name="reminder_primer_description">Recibe un recordatorio diario para registrar lo que gastaste. Toma segundos y mantiene tus presupuestos precisos.</string>
+    <string name="reminder_primer_turn_on">Activar recordatorio diario</string>
+    <string name="reminder_primer_not_now">Ahora no</string>
+    <string name="reminder_primer_footnote">Puedes cambiar la hora o desactivarlo cuando quieras en Ajustes.</string>
+    <string name="first_save_title">¡Primer gasto guardado!</string>
+    <string name="first_save_description">Buen comienzo. Registra tus gastos durante 7 días y verás exactamente en qué se va tu dinero.</string>
+    <string name="first_save_progress">Día %1$d de %2$d</string>
+    <string name="first_save_add_another">Añadir otro</string>
+    <string name="first_save_done">Listo</string>
+    <string name="shortcut_add_expense_short">Añadir gasto</string>
+    <string name="shortcut_add_expense_long">Añadir un nuevo gasto</string>
+</resources>

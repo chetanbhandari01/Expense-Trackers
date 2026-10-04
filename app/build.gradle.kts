@@ -1,0 +1,132 @@
+import java.util.Locale
+plugins {
+    id("naveenapps.plugin.android.app")
+    id("com.google.android.gms.oss-licenses-plugin")
+    id("naveenapps.plugin.kotlin.basic")
+    id("naveenapps.plugin.compose")
+    id("naveenapps.plugin.di")
+    id("com.google.gms.google-services")
+    id("com.google.firebase.crashlytics")
+    alias(libs.plugins.compose.compiler)
+}
+
+
+android {
+
+    namespace = "com.chetanbhandari.expensemanager"
+
+    defaultConfig {
+        applicationId = "com.chetanbhandari.expensemanager"
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+    }
+
+    buildTypes {
+        debug {
+            isMinifyEnabled = false
+            applicationIdSuffix = ".debug"
+            enableUnitTestCoverage = true
+        }
+        create("macrobenchmark") {
+            signingConfig = signingConfigs.getByName("debug")
+            matchingFallbacks += listOf("release")
+            isDebuggable = false
+        }
+        release {
+            isShrinkResources = true
+            isMinifyEnabled = true
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro"
+            )
+
+            val keyStore = runCatching { signingConfigs.getByName("release") }.getOrNull()
+                ?: signingConfigs.getByName("debug")
+
+            signingConfig = keyStore
+        }
+    }
+
+    lint {
+        baseline = file("lint-baseline.xml")
+    }
+
+    testOptions {
+        managedDevices {
+            // AGP 9: managed emulators live in `localDevices` (typed to ManagedVirtualDevice);
+            // the generic `devices` container from AGP 8 no longer works with the new DSL.
+            localDevices {
+                maybeCreate("pixel2api30").apply {
+                    // Use device profiles you typically see in Android Studio.
+                    device = "Pixel 2"
+                    // Use only API levels 27 and higher.
+                    apiLevel = 30
+                    // To include Google services, use "google".
+                    systemImageSource = "aosp"
+                }
+            }
+        }
+    }
+}
+
+dependencies {
+    implementation(project(":core:common"))
+    implementation(project(":core:model"))
+    implementation(project(":core:designsystem"))
+    implementation(project(":core:database"))
+    implementation(project(":core:domain"))
+    implementation(project(":core:data"))
+    implementation(project(":core:datastore"))
+    implementation(project(":core:navigation"))
+    implementation(project(":core:notification"))
+    implementation(project(":core:repository"))
+    implementation(project(":core:settings"))
+
+    implementation(project(":feature:account"))
+    implementation(project(":feature:analysis"))
+    implementation(project(":feature:budget"))
+    implementation(project(":feature:category"))
+    implementation(project(":feature:dashboard"))
+    implementation(project(":feature:transaction"))
+    implementation(project(":feature:onboarding"))
+    implementation(project(":feature:filter"))
+    implementation(project(":feature:country"))
+    implementation(project(":feature:currency"))
+
+    implementation(project(":feature:settings"))
+    implementation(project(":feature:theme"))
+    implementation(project(":feature:language"))
+    implementation(project(":feature:export"))
+    implementation(project(":feature:reminder"))
+    implementation(project(":feature:currency"))
+    implementation(project(":feature:about"))
+
+    implementation(platform(libs.firebase.bom))
+    implementation(libs.firebase.crashlytics)
+    implementation(libs.firebase.analytics)
+
+    implementation(libs.androidx.splash.screen)
+
+    implementation(libs.androidx.appcompat)
+    implementation(libs.androidx.material)
+    implementation(libs.androidx.profileinstaller)
+
+    implementation(libs.kotlinx.coroutines.android)
+
+    implementation(libs.google.oss.licenses)
+
+    implementation(libs.app.update.ktx)
+    implementation(libs.androidx.biometric)
+    implementation(libs.androidx.glance.appwidget)
+    implementation(libs.androidx.glance.material3)
+
+    testImplementation(project(":core:testing"))
+    androidTestImplementation(project(":core:testing"))
+}
+
+fun String.toCapital(): String {
+    return this.replaceFirstChar {
+        if (it.isLowerCase()) it.titlecase(
+            Locale.getDefault()
+        ) else it.toString()
+    }
+}

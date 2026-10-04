@@ -1,0 +1,80 @@
+package com.chetanbhandari.expensemanager.core.data.repository
+
+import androidx.annotation.VisibleForTesting
+import com.chetanbhandari.expensemanager.core.common.utils.AppCoroutineDispatchers
+import com.chetanbhandari.expensemanager.core.datastore.CurrencyDataStore
+import com.chetanbhandari.expensemanager.core.model.Amount
+import com.chetanbhandari.expensemanager.core.model.Currency
+import com.chetanbhandari.expensemanager.core.model.CurrencyPosition
+import com.chetanbhandari.expensemanager.core.model.isPrefix
+import com.chetanbhandari.expensemanager.core.repository.CurrencyRepository
+import com.chetanbhandari.expensemanager.core.settings.domain.repository.NumberFormatRepository
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.withContext
+
+private const val MINUS_SYMBOL = "-"
+private const val DEFAULT_CURRENCY_SYMBOL = "$"
+private const val DEFAULT_CURRENCY_CODE = "USD"
+private const val DEFAULT_CURRENCY_NAME = "US Dollars"
+
+@VisibleForTesting
+val defaultCurrency = Currency(
+    name = DEFAULT_CURRENCY_NAME,
+    symbol = DEFAULT_CURRENCY_SYMBOL,
+    position = CurrencyPosition.SUFFIX,
+    code = DEFAULT_CURRENCY_CODE,
+)
+
+class CurrencyRepositoryImpl(
+    private val dataStore: CurrencyDataStore,
+    private val dispatchers: AppCoroutineDispatchers,
+    private val numberFormatRepository: NumberFormatRepository,
+) : CurrencyRepository {
+
+    override fun getDefaultCurrency(): Currency = defaultCurrency
+
+    override suspend fun saveCurrency(currency: Currency): Boolean = withContext(dispatchers.io) {
+        dataStore.setCurrency(
+            name = currency.name,
+            symbol = currency.symbol,
+            position = currency.position.ordinal,
+            code = currency.code,
+        )
+        true
+    }
+
+    override fun getSelectedCurrency(): Flow<Currency> = dataStore.getCurrency(defaultCurrency = getDefaultCurrency())
+
+    override fun getFormattedCurrency(amount: Amount): Amount {
+        val currency = amount.currency ?: getDefaultCurrency()
+        return amount.copy(
+            amountString = getCurrency(
+                currency = currency,
+                amount = amount.amount,
+            ).let {
+                return@let if (currency.position.isPrefix() && it.contains(MINUS_SYMBOL)) {
+                    "${MINUS_SYMBOL}${it.replace(MINUS_SYMBOL, "")}"
+                } else {
+                    it
+                }
+            },
+        )
+    }
+
+    private fun getCurrency(
+        currency: Currency,
+        amount: Double,
+    ): String {
+        val currencyFormatted = numberFormatRepository.formatForDisplay(amount)
+
+        return when (currency.position) {
+            CurrencyPosition.PREFIX -> {
+                "${currency.symbol}$currencyFormatted"
+            }
+
+            CurrencyPosition.SUFFIX -> {
+                "${currencyFormatted}${currency.symbol}"
+            }
+        }
+    }
+}

@@ -1,0 +1,59 @@
+<resources>
+
+    <string name="app_name">Expense Manager</string>
+
+
+    <!-- Failure message strings -->
+
+    <string name="select">Seç</string>
+
+    <string name="title_home">Ana Sayfa</string>
+    <string name="view_all">Tümünü gör</string>
+    <string name="accounts">Hesap</string>
+
+    <string name="category_name">Kategori Adı</string>
+
+
+    <string name="title_graph">Grafik</string>
+
+
+    <string name="currency">Para Birimi</string>
+
+    <string name="choose_color">Renk seç</string>
+    <string name="choose_icon">Simge Seç</string>
+
+
+    <string name="categories">Kategoriler</string>
+    <string name="total">Toplam</string>
+    <string name="transaction_summary">Özet</string>
+    <string name="clear_all">Tümünü Temizle</string>
+    <string name="category_selection_message">Devam etmek için en az bir kategori seçmelisiniz</string>
+    <string name="share">Paylaş</string>
+    <string name="hello">Merhaba!</string>
+    <string name="guest">Misafir</string>
+    <string name="balance">Bakiye</string>
+
+    <string name="add_transaction">İşlem Ekle</string>
+    <string name="cancel">İptal</string>
+    <string name="ok">Tamam</string>
+    <string name="settings">Ayarlar</string>
+    <string name="analysis">Analiz</string>
+    <string name="transaction">İşlem</string>
+
+    <string name="app_lock_title">Expense Manager Kilidini Aç</string>
+    <string name="app_lock_description">Devam etmek için kimliğinizi doğrulayın</string>
+    <string name="app_lock_unlock">Kilidi Aç</string>
+
+    <string name="reminder_primer_title">Hiçbir harcamayı kaçırmayın</string>
+    <string name="reminder_primer_description">Harcamalarınızı kaydetmeniz için günde bir hatırlatma alın. Birkaç saniye sürer ve bütçelerinizi doğru tutar.</string>
+    <string name="reminder_primer_turn_on">Günlük hatırlatmayı aç</string>
+    <string name="reminder_primer_not_now">Şimdi değil</string>
+    <string name="reminder_primer_footnote">Saati istediğiniz zaman Ayarlar\'dan değiştirebilir veya kapatabilirsiniz.</string>
+    <string name="first_save_title">İlk harcama kaydedildi!</string>
+    <string name="first_save_description">Harika bir başlangıç. 7 gün boyunca harcamalarını kaydet, paranın tam olarak nereye gittiğini gör.</string>
+    <string name="first_save_progress">%2$d günün %1$d. günü</string>
+    <string name="first_save_add_another">Bir tane daha ekle</string>
+    <string name="first_save_done">Tamam</string>
+    <string name="shortcut_add_expense_short">Harcama ekle</string>
+    <string name="shortcut_add_expense_long">Yeni harcama ekle</string>
+</resources>

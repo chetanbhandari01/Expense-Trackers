@@ -1,0 +1,27 @@
+package com.chetanbhandari.expensemanager.feature.dashboard.di
+
+import com.chetanbhandari.expensemanager.feature.dashboard.DashboardViewModel
+import org.koin.core.module.dsl.viewModel
+import org.koin.dsl.module
+
+val DashboardViewModelModule = module {
+    viewModel {
+        DashboardViewModel(
+            getTransactionWithFilterUseCase = get(),
+            getCurrencyUseCase = get(),
+            getFormattedAmountUseCase = get(),
+            getAllAccountsUseCase = get(),
+            getTransactionGroupByCategoryUseCase = get(),
+            getBudgetsUseCase = get(),
+            appCoroutineDispatchers = get(),
+            appComposeNavigator = get(),
+            getDateRangeUseCase = get(),
+            settingsRepository = get(),
+            feedbackRepository = get(),
+            getReminderStatusUseCase = get(),
+            getMonthlyRecapUseCase = get(),
+            getLoggingStreakUseCase = get(),
+            analyticsRepository = get(),
+        )
+    }
+}

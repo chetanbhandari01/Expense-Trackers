@@ -1,0 +1,589 @@
+package com.chetanbhandari.expensemanager.feature.transaction.create
+
+import android.net.Uri
+import androidx.lifecycle.SavedStateHandle
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import com.chetanbhandari.expensemanager.core.domain.usecase.account.GetAllAccountsUseCase
+import com.chetanbhandari.expensemanager.core.domain.usecase.category.GetAllCategoryUseCase
+import com.chetanbhandari.expensemanager.core.domain.usecase.settings.currency.GetCurrencyUseCase
+import com.chetanbhandari.expensemanager.core.domain.usecase.settings.currency.GetDefaultCurrencyUseCase
+import com.chetanbhandari.expensemanager.core.domain.usecase.settings.currency.GetFormattedAmountUseCase
+import com.chetanbhandari.expensemanager.core.domain.usecase.transaction.AddTransactionUseCase
+import com.chetanbhandari.expensemanager.core.domain.usecase.transaction.DeleteTransactionUseCase
+import com.chetanbhandari.expensemanager.core.domain.usecase.transaction.FindTransactionByIdUseCase
+import com.chetanbhandari.expensemanager.core.domain.usecase.transaction.UpdateTransactionUseCase
+import com.chetanbhandari.expensemanager.core.model.Account
+import com.chetanbhandari.expensemanager.core.model.AccountType
+import com.chetanbhandari.expensemanager.core.model.AccountUiModel
+import com.chetanbhandari.expensemanager.core.model.Amount
+import com.chetanbhandari.expensemanager.core.model.Category
+import com.chetanbhandari.expensemanager.core.model.CategoryType
+import com.chetanbhandari.expensemanager.core.model.Currency
+import com.chetanbhandari.expensemanager.core.model.Resource
+import com.chetanbhandari.expensemanager.core.model.StoredIcon
+import com.chetanbhandari.expensemanager.core.model.TextFieldValue
+import com.chetanbhandari.expensemanager.core.model.Transaction
+import com.chetanbhandari.expensemanager.core.model.TransactionType
+import com.chetanbhandari.expensemanager.core.model.getAvailableCreditLimit
+import com.chetanbhandari.expensemanager.core.model.isExpense
+import com.chetanbhandari.expensemanager.core.model.isIncome
+import com.chetanbhandari.expensemanager.core.model.isTransfer
+import com.chetanbhandari.expensemanager.core.model.toAccountUiModel
+import com.chetanbhandari.expensemanager.core.navigation.AppComposeNavigator
+import com.chetanbhandari.expensemanager.core.navigation.ExpenseManagerArgsNames
+import com.chetanbhandari.expensemanager.core.navigation.ExpenseManagerScreens
+import com.chetanbhandari.expensemanager.core.repository.AnalyticsEvents
+import com.chetanbhandari.expensemanager.core.repository.AnalyticsParams
+import com.chetanbhandari.expensemanager.core.repository.AnalyticsRepository
+import com.chetanbhandari.expensemanager.core.repository.BudgetAlertTrigger
+import com.chetanbhandari.expensemanager.core.repository.FeedbackRepository
+import com.chetanbhandari.expensemanager.core.repository.ImageStorageRepository
+import com.chetanbhandari.expensemanager.core.repository.SettingsRepository
+import com.chetanbhandari.expensemanager.core.settings.domain.repository.NumberFormatRepository
+import java.util.Calendar
+import java.util.Date
+import java.util.UUID
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.firstOrNull
+import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.receiveAsFlow
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
+
+class TransactionCreateViewModel(
+    savedStateHandle: SavedStateHandle,
+    getCurrencyUseCase: GetCurrencyUseCase,
+    getAllAccountsUseCase: GetAllAccountsUseCase,
+    getAllCategoryUseCase: GetAllCategoryUseCase,
+    getDefaultCurrencyUseCase: GetDefaultCurrencyUseCase,
+    private val getFormattedAmountUseCase: GetFormattedAmountUseCase,
+    private val findTransactionByIdUseCase: FindTransactionByIdUseCase,
+    private val addTransactionUseCase: AddTransactionUseCase,
+    private val updateTransactionUseCase: UpdateTransactionUseCase,
+    private val deleteTransactionUseCase: DeleteTransactionUseCase,
+    private val settingsRepository: SettingsRepository,
+    private val imageStorageRepository: ImageStorageRepository,
+    private val appComposeNavigator: AppComposeNavigator,
+    private val numberFormatRepository: NumberFormatRepository,
+    private val feedbackRepository: FeedbackRepository,
+    private val analyticsRepository: AnalyticsRepository,
+    private val budgetAlertTrigger: BudgetAlertTrigger,
+) : ViewModel() {
+
+    private val sessionCreatedAttachmentPaths = mutableListOf<String>()
+
+    private val _event = Channel<TransactionCreateEvent>()
+    val event = _event.receiveAsFlow()
+
+    private val transactionType = MutableStateFlow(TransactionType.EXPENSE)
+
+    // Tracks whether both the accounts and categories flows have emitted their first value,
+    // so we only populate an editing transaction once both are ready.
+    private val syncState = MutableStateFlow(
+        TransactionCreateInitSetupState(
+            isCategorySyncCompleted = false,
+            isAccountSyncCompleted = false,
+        ),
+    )
+
+    private val _state = MutableStateFlow(
+        TransactionCreateState(
+            amount = TextFieldValue(
+                value = numberFormatRepository.formatForEditing(0.0),
+                valueError = false,
+                onValueChange = this::setAmountOnChange,
+            ),
+            notes = TextFieldValue(
+                value = "",
+                valueError = false,
+                onValueChange = this::setNotes,
+            ),
+            dateTime = Date(),
+            transactionType = TransactionType.EXPENSE,
+            currency = getDefaultCurrencyUseCase.invoke(),
+            selectedCategory = defaultCategory,
+            selectedFromAccount = defaultAccount,
+            selectedToAccount = defaultAccount,
+            accounts = emptyList(),
+            categories = emptyList(),
+            showDeleteButton = false,
+            showDeleteDialog = false,
+            showCategorySelection = false,
+            showAccountSelection = false,
+            // A new transaction opens straight onto the keypad: the amount is the one field
+            // every entry needs, so this saves a tap on the app's most frequent action.
+            // Editing (an id was passed) opens on the form as before.
+            showNumberPad = savedStateHandle.get<String>(ExpenseManagerArgsNames.ID).isNullOrBlank(),
+            showTimeSelection = false,
+            showDateSelection = false,
+            accountSelection = AccountSelection.FROM_ACCOUNT,
+        ),
+    )
+    var state = _state.asStateFlow()
+
+    // Non-null only when editing an existing transaction.
+    private var editingTransaction: Transaction? = null
+
+    init {
+        observeAccountsAndCurrency(getCurrencyUseCase, getAllAccountsUseCase)
+        observeCategories(getAllCategoryUseCase)
+        loadTransactionWhenReady(savedStateHandle)
+    }
+
+    // region Observers
+
+    private fun observeAccountsAndCurrency(
+        getCurrencyUseCase: GetCurrencyUseCase,
+        getAllAccountsUseCase: GetAllAccountsUseCase,
+    ) {
+        combine(
+            getCurrencyUseCase.invoke(),
+            getAllAccountsUseCase.invoke(),
+        ) { currency, accounts ->
+            val mappedAccounts = mapAccountsToUiModels(accounts, currency)
+            val defaultAccountId = settingsRepository.getDefaultAccount().firstOrNull()
+            val selectedAccount = mappedAccounts.find { it.id == defaultAccountId }
+                ?: mappedAccounts.firstOrNull()
+                ?: defaultAccount
+            _state.update {
+                it.copy(
+                    currency = currency,
+                    accounts = mappedAccounts,
+                    selectedFromAccount = selectedAccount,
+                    selectedToAccount = selectedAccount,
+                )
+            }
+            syncState.update { it.copy(isAccountSyncCompleted = true) }
+        }.launchIn(viewModelScope)
+    }
+
+    private fun observeCategories(getAllCategoryUseCase: GetAllCategoryUseCase) {
+        combine(
+            transactionType,
+            getAllCategoryUseCase.invoke(),
+            settingsRepository.getDefaultIncomeCategory(),
+            settingsRepository.getDefaultExpenseCategory(),
+        ) { type, categories, defaultIncomeCategory, defaultExpenseCategory ->
+            val filteredCategories = categories.filter { category ->
+                if (type.isIncome()) category.type.isIncome() else category.type.isExpense()
+            }
+            val preferredCategoryId = when (type) {
+                TransactionType.INCOME -> defaultIncomeCategory
+                TransactionType.EXPENSE -> defaultExpenseCategory
+                TransactionType.TRANSFER -> null
+            }
+            val matchedCategory = filteredCategories.find { it.id == preferredCategoryId }
+
+            _state.update {
+                it.copy(
+                    transactionType = type,
+                    categories = filteredCategories,
+                    selectedCategory = matchedCategory ?: filteredCategories.firstOrNull()
+                        ?: defaultCategory,
+                )
+            }
+            syncState.update { it.copy(isCategorySyncCompleted = true) }
+        }.launchIn(viewModelScope)
+    }
+
+    private fun loadTransactionWhenReady(savedStateHandle: SavedStateHandle) {
+        val transactionId = savedStateHandle.get<String>(ExpenseManagerArgsNames.ID) ?: return
+        viewModelScope.launch {
+            syncState.first { it.isAccountSyncCompleted && it.isCategorySyncCompleted }
+            loadEditingTransaction(transactionId)
+        }
+    }
+
+    // endregion
+
+    fun createImageCaptureUri(): Uri = imageStorageRepository.createImageCaptureUri()
+
+    // region Transaction load (edit mode)
+
+    private suspend fun loadEditingTransaction(transactionId: String) {
+        when (val response = findTransactionByIdUseCase.invoke(transactionId)) {
+            is Resource.Error -> Unit
+
+            is Resource.Success -> {
+                val transaction = response.data
+                editingTransaction = transaction
+                transactionType.value = transaction.type
+                _state.update { current ->
+                    current.copy(
+                        amount = current.amount.copy(
+                            value = numberFormatRepository.formatForEditing(transaction.amount.amount),
+                        ),
+                        transactionType = transaction.type,
+                        dateTime = transaction.createdOn,
+                        notes = current.notes.copy(value = transaction.notes),
+                        selectedCategory = transaction.category,
+                        selectedFromAccount = transaction.fromAccount.toAccountUiModel(
+                            getFormattedAmountUseCase.invoke(
+                                transaction.fromAccount.amount,
+                                current.currency,
+                            ),
+                        ),
+                        selectedToAccount = transaction.toAccount?.let { toAccount ->
+                            toAccount.toAccountUiModel(
+                                getFormattedAmountUseCase.invoke(
+                                    toAccount.amount,
+                                    current.currency,
+                                ),
+                            )
+                        } ?: defaultAccount,
+                        showDeleteButton = true,
+                        attachments = transaction.attachments,
+                    )
+                }
+            }
+        }
+    }
+
+    // endregion
+
+    // region Save / Delete
+
+    private fun save() {
+        val currentState = _state.value
+        val amountText = currentState.amount.value
+        val amountValue = numberFormatRepository.parseToDouble(amountText)
+
+        if (amountText.isBlank() || amountValue == null || amountValue <= 0.0) {
+            _state.update { it.copy(amount = it.amount.copy(valueError = true)) }
+            return
+        }
+
+        if (currentState.transactionType.isTransfer() &&
+            currentState.selectedFromAccount.id == currentState.selectedToAccount.id
+        ) {
+            return
+        }
+
+        // amountValue is smart-cast to Double after the null check above
+        persistTransaction(buildTransactionFromState(currentState, amountValue))
+    }
+
+    internal fun buildTransactionFromState(
+        state: TransactionCreateState,
+        amountValue: Double,
+    ): Transaction = Transaction(
+        id = editingTransaction?.id ?: UUID.randomUUID().toString(),
+        notes = state.notes.value,
+        categoryId = state.selectedCategory.id,
+        fromAccountId = state.selectedFromAccount.id,
+        toAccountId = if (state.transactionType.isTransfer()) state.selectedToAccount.id else null,
+        type = state.transactionType,
+        amount = Amount(amountValue),
+        imagePath = "",
+        createdOn = state.dateTime,
+        updatedOn = Calendar.getInstance().time,
+        attachments = state.attachments,
+    )
+
+    private fun persistTransaction(transaction: Transaction) {
+        val isNewTransaction = editingTransaction == null
+        val previouslyPersistedAttachments = editingTransaction?.attachments ?: emptyList()
+        viewModelScope.launch {
+            val response = if (editingTransaction != null) {
+                updateTransactionUseCase.invoke(transaction)
+            } else {
+                addTransactionUseCase.invoke(transaction)
+            }
+            if (response is Resource.Success) {
+                (previouslyPersistedAttachments - transaction.attachments.toSet()).forEach {
+                    imageStorageRepository.deleteTransactionAttachment(it)
+                }
+                sessionCreatedAttachmentPaths.removeAll(transaction.attachments)
+                // New or edited spending may have pushed a budget past 80% / 100%.
+                budgetAlertTrigger.checkBudgetsSoon()
+                discardSessionAttachments()
+                if (isNewTransaction) {
+                    onNewTransactionCreated(transaction)
+                } else {
+                    analyticsRepository.logEvent(
+                        AnalyticsEvents.TRANSACTION_UPDATED,
+                        mapOf(AnalyticsParams.TYPE to transaction.type.name.lowercase()),
+                    )
+                }
+                closePage()
+            }
+        }
+    }
+
+    // Only ever called after a brand-new transaction (not an edit) is saved successfully.
+    // Bumps the running "transactions created" count, and — once someone has logged enough
+    // transactions and enough days have passed since install — requests Google Play's in-app
+    // review popup exactly once for the life of the install.
+    private suspend fun onNewTransactionCreated(transaction: Transaction) {
+        feedbackRepository.setTransactionCreated(true)
+        logTransactionCreated(transaction)
+        if (feedbackRepository.shouldShowFeedbackDialog().first()) {
+            // Marked immediately, before we know whether Play actually showed anything —
+            // Play never reports that back, so "requested" is the only signal we get.
+            feedbackRepository.setFeedbackDialogShown(true)
+            analyticsRepository.logEvent(AnalyticsEvents.REVIEW_REQUESTED, emptyMap())
+            _event.send(TransactionCreateEvent.RequestReview)
+        }
+    }
+
+    // Activation metric: `is_first` marks the install's first-ever transaction, so the
+    // install -> first transaction funnel can be built in Firebase without BigQuery.
+    private suspend fun logTransactionCreated(transaction: Transaction) {
+        val count = feedbackRepository.getTransactionCreatedCount().first()
+        if (count == 1) {
+            // Very first transaction of this install: Home celebrates it once.
+            feedbackRepository.setFirstSaveCelebrationPending(true)
+        }
+        analyticsRepository.logEvent(
+            AnalyticsEvents.TRANSACTION_CREATED,
+            mapOf(
+                AnalyticsParams.TYPE to transaction.type.name.lowercase(),
+                AnalyticsParams.IS_FIRST to (count <= 1).toString(),
+                AnalyticsParams.TRANSACTION_COUNT to count.toString(),
+                AnalyticsParams.HAS_NOTES to transaction.notes.isNotBlank().toString(),
+                AnalyticsParams.HAS_ATTACHMENT to transaction.attachments.isNotEmpty().toString(),
+            ),
+        )
+    }
+
+    private fun deleteTransaction() {
+        val transaction = editingTransaction ?: return
+        viewModelScope.launch {
+            if (deleteTransactionUseCase.invoke(transaction) is Resource.Success) {
+                analyticsRepository.logEvent(
+                    AnalyticsEvents.TRANSACTION_DELETED,
+                    mapOf(AnalyticsParams.TYPE to transaction.type.name.lowercase()),
+                )
+                transaction.attachments.forEach {
+                    imageStorageRepository.deleteTransactionAttachment(it)
+                }
+                discardSessionAttachments()
+                closePage()
+            }
+        }
+    }
+
+    // endregion
+
+    // region Attachments
+
+    private fun onAttachmentPicked(uri: Uri) {
+        viewModelScope.launch {
+            val path = imageStorageRepository.saveTransactionAttachment(uri) ?: return@launch
+            sessionCreatedAttachmentPaths.add(path)
+            _state.update { it.copy(attachments = it.attachments + path) }
+        }
+    }
+
+    private fun removeAttachment(path: String) {
+        _state.update { it.copy(attachments = it.attachments - path) }
+    }
+
+    private fun cancelEditing() {
+        discardSessionAttachments()
+        closePage()
+    }
+
+    private fun discardSessionAttachments() {
+        sessionCreatedAttachmentPaths.forEach { imageStorageRepository.deleteTransactionAttachment(it) }
+        sessionCreatedAttachmentPaths.clear()
+    }
+
+    // endregion
+
+    // region State helpers
+
+    private fun mapAccountsToUiModels(
+        accounts: List<Account>,
+        currency: Currency,
+    ): List<AccountUiModel> = accounts.map { account ->
+        account.toAccountUiModel(
+            getFormattedAmountUseCase.invoke(account.amount, currency),
+            if (account.type == AccountType.CREDIT) {
+                getFormattedAmountUseCase.invoke(account.getAvailableCreditLimit(), currency)
+            } else {
+                null
+            },
+        )
+    }
+
+    private fun setAmountOnChange(amount: String) {
+        val amountValue = numberFormatRepository.parseToDouble(amount)
+        _state.update {
+            it.copy(
+                amount = it.amount.copy(
+                    value = amount,
+                    valueError = amount.isBlank() || amountValue == null || amountValue <= 0.0,
+                ),
+                showNumberPad = false,
+            )
+        }
+    }
+
+    private fun setNotes(notes: String) {
+        _state.update { it.copy(notes = it.notes.copy(value = notes)) }
+    }
+
+    private fun changeTransactionType(type: TransactionType) {
+        transactionType.update { type }
+        _state.update { it.copy(transactionType = type) }
+    }
+
+    private fun closePage() {
+        appComposeNavigator.popBackStack()
+    }
+
+    private fun openCategoryCreate() {
+        appComposeNavigator.navigate(ExpenseManagerScreens.CategoryCreate(null))
+    }
+
+    private fun openAccountCreate() {
+        appComposeNavigator.navigate(ExpenseManagerScreens.AccountCreate(null))
+    }
+
+    private fun dismissDeleteDialog() {
+        _state.update { it.copy(showDeleteDialog = false) }
+    }
+
+    private fun showDeleteDialog() {
+        _state.update { it.copy(showDeleteDialog = true) }
+    }
+
+    // endregion
+
+    fun processAction(action: TransactionCreateAction) {
+        when (action) {
+            TransactionCreateAction.ClosePage -> cancelEditing()
+
+            TransactionCreateAction.ShowDeleteDialog -> showDeleteDialog()
+
+            TransactionCreateAction.DismissDeleteDialog -> dismissDeleteDialog()
+
+            TransactionCreateAction.Delete -> deleteTransaction()
+
+            TransactionCreateAction.Save -> save()
+
+            is TransactionCreateAction.OpenAccountCreate -> openAccountCreate()
+
+            is TransactionCreateAction.OpenCategoryCreate -> openCategoryCreate()
+
+            is TransactionCreateAction.ChangeTransactionType -> changeTransactionType(action.type)
+
+            // The keypad reports null when it's dismissed (back / tap outside). Close it then,
+            // otherwise the user is stuck on the keypad until they enter an amount.
+            is TransactionCreateAction.SetNumberPadValue -> action.amount?.let {
+                setAmountOnChange(it)
+            } ?: _state.update { it.copy(showNumberPad = false) }
+
+            TransactionCreateAction.ShowCategorySelection -> _state.update {
+                it.copy(
+                    showCategorySelection = true,
+                )
+            }
+
+            TransactionCreateAction.DismissCategorySelection -> _state.update {
+                it.copy(
+                    showCategorySelection = false,
+                )
+            }
+
+            is TransactionCreateAction.SelectCategory -> _state.update {
+                it.copy(selectedCategory = action.category, showCategorySelection = false)
+            }
+
+            is TransactionCreateAction.ShowAccountSelection -> _state.update {
+                it.copy(showAccountSelection = true, accountSelection = action.type)
+            }
+
+            TransactionCreateAction.DismissAccountSelection -> _state.update {
+                it.copy(
+                    showAccountSelection = false,
+                )
+            }
+
+            is TransactionCreateAction.SelectAccount -> _state.update {
+                when (it.accountSelection) {
+                    AccountSelection.FROM_ACCOUNT -> it.copy(
+                        selectedFromAccount = action.account,
+                        showAccountSelection = false,
+                    )
+
+                    AccountSelection.TO_ACCOUNT -> it.copy(
+                        selectedToAccount = action.account,
+                        showAccountSelection = false,
+                    )
+                }
+            }
+
+            TransactionCreateAction.ShowNumberPad -> _state.update { it.copy(showNumberPad = true) }
+
+            TransactionCreateAction.DismissNumberPad -> _state.update { it.copy(showNumberPad = false) }
+
+            TransactionCreateAction.ShowDateSelection -> _state.update { it.copy(showDateSelection = true) }
+
+            TransactionCreateAction.ShowTimeSelection -> _state.update { it.copy(showTimeSelection = true) }
+
+            TransactionCreateAction.DismissDateSelection -> _state.update {
+                it.copy(showDateSelection = false, showTimeSelection = false)
+            }
+
+            is TransactionCreateAction.SelectDate -> _state.update {
+                it.copy(
+                    dateTime = action.date,
+                    showDateSelection = false,
+                    showTimeSelection = false,
+                )
+            }
+
+            TransactionCreateAction.ShowAttachmentPicker -> _state.update {
+                it.copy(showAttachmentPicker = true)
+            }
+
+            TransactionCreateAction.DismissAttachmentPicker -> _state.update {
+                it.copy(showAttachmentPicker = false)
+            }
+
+            is TransactionCreateAction.AttachmentPicked -> {
+                _state.update { it.copy(showAttachmentPicker = false) }
+                onAttachmentPicked(action.uri)
+            }
+
+            is TransactionCreateAction.RemoveAttachment -> removeAttachment(action.path)
+        }
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        discardSessionAttachments()
+    }
+
+    companion object {
+        private val defaultCategory = Category(
+            id = "1",
+            name = "Shopping",
+            type = CategoryType.EXPENSE,
+            storedIcon = StoredIcon(
+                name = "ic_calendar",
+                backgroundColor = "#000000",
+            ),
+            createdOn = Date(),
+            updatedOn = Date(),
+        )
+
+        private val defaultAccount = AccountUiModel(
+            id = "1",
+            name = "Shopping",
+            storedIcon = StoredIcon(
+                name = "ic_calendar",
+                backgroundColor = "#000000",
+            ),
+            amount = Amount(0.0, "$ 0.00"),
+            amountTextColor = com.chetanbhandari.expensemanager.core.common.R.color.green_500,
+        )
+    }
+}

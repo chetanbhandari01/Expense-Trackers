@@ -1,0 +1,17 @@
+package com.chetanbhandari.expensemanager.core.settings.data.repository
+
+import com.chetanbhandari.expensemanager.core.settings.data.datastore.NumberFormatSettingsDatastore
+import com.chetanbhandari.expensemanager.core.settings.domain.model.NumberFormatType
+import com.chetanbhandari.expensemanager.core.settings.domain.repository.NumberFormatSettingRepository
+import kotlinx.coroutines.flow.Flow
+
+class NumberFormatSettingRepositoryImpl(
+    private val numberFormatSettingsDatastore: NumberFormatSettingsDatastore,
+) : NumberFormatSettingRepository {
+
+    override fun getNumberFormatType(): Flow<NumberFormatType> = numberFormatSettingsDatastore.getNumberFormatType()
+
+    override suspend fun saveNumberFormatType(numberFormatType: NumberFormatType) {
+        numberFormatSettingsDatastore.setNumberFormatType(numberFormatType)
+    }
+}
