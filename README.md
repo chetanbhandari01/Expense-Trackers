@@ -1,4 +1,4 @@
-# AI Expense Manager
+# Expense Tracker
 
 A modern, privacy-first Android expense management application enhanced with **local AI-powered spending insights**.
 
